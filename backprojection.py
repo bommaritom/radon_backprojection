@@ -19,12 +19,12 @@ from numpy import matrix
 
 # create shepp logan phantom image
 
-image = checkerboard()
-image = rescale(image, scale=1, mode='reflect')
+image = shepp_logan_phantom()
+image = rescale(image, scale=.4, mode='reflect')
 
 # create radon transform
 
-NUM_ANGLES = 500
+NUM_ANGLES = 100
 angles = np.linspace(0., 180., NUM_ANGLES, endpoint=False)
 sinogram = radon(image, theta=angles)
 
@@ -62,8 +62,6 @@ for m in range(1, N//2):
 # inverse fourier transform of each slice
 
 Q = np.fft.ifft(S_filtered)
-plt.plot(Q[0])
-plt.show()
 
 # backproject each slice
 
@@ -73,10 +71,10 @@ for k in range(len(Q)):
 	theta = k/NUM_ANGLES * np.pi
 	for i in range(N):
 		for j in range(N):
-			val = (j-(N/2))*np.cos(theta)+(i-(N/2))*np.sin(theta) + N/2 + 1
+			val = (j-(N/2))*np.cos(theta)+(i-(N/2))*np.sin(theta) + N/2 + 1/2
 			if (val >= 0 and val < len(Q[k])):
-				floor = np.min(int(np.floor(val)), len(Q[k])-1)
-				ceil = np.min(int(np.ceil(val)), len(Q[k]-1)
+				floor = np.minimum(int(np.floor(val)), len(Q[k])-1)
+				ceil = np.minimum(int(np.ceil(val)), len(Q[k])-1)
 				f[N-1-i][j] += Q[k][floor] + (val-floor)*(Q[k][ceil]-Q[k][floor])
 	
 	print("  " + str(np.round(100*(k+1)/NUM_ANGLES, 1))+ "% complete", end='\r')
@@ -109,7 +107,7 @@ f *= np.pi/NUM_ANGLES
 
 
 error = f - image
-print(f'FBP rms reconstruction error: {np.sqrt(np.mean(error**2)):.3g}')
+print(f'FBP normalized rms reconstruction error: {np.sqrt(np.mean(error**2))/np.sqrt(np.mean(image**2)):.3g}')
 
 imkwargs = dict(vmin=-0.2, vmax=0.2)
 fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4.5),
