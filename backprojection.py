@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 import skimage as sk
 from skimage.data import shepp_logan_phantom
+from skimage.data import checkerboard
 from skimage.transform import radon, rescale
 from numpy import matrix
 
@@ -18,12 +19,12 @@ from numpy import matrix
 
 # create shepp logan phantom image
 
-image = shepp_logan_phantom()
-image = rescale(image, scale=0.4, mode='reflect')
+image = checkerboard()
+image = rescale(image, scale=1, mode='reflect')
 
 # create radon transform
 
-NUM_ANGLES = 100
+NUM_ANGLES = 500
 angles = np.linspace(0., 180., NUM_ANGLES, endpoint=False)
 sinogram = radon(image, theta=angles)
 
@@ -61,6 +62,8 @@ for m in range(1, N//2):
 # inverse fourier transform of each slice
 
 Q = np.fft.ifft(S_filtered)
+plt.plot(Q[0])
+plt.show()
 
 # backproject each slice
 
@@ -72,7 +75,9 @@ for k in range(len(Q)):
 		for j in range(N):
 			val = (j-(N/2))*np.cos(theta)+(i-(N/2))*np.sin(theta) + N/2 + 1
 			if (val >= 0 and val < len(Q[k])):
-				f[N-1-i][j] += Q[k][int(val)]
+				floor = np.min(int(np.floor(val)), len(Q[k])-1)
+				ceil = np.min(int(np.ceil(val)), len(Q[k]-1)
+				f[N-1-i][j] += Q[k][floor] + (val-floor)*(Q[k][ceil]-Q[k][floor])
 	
 	print("  " + str(np.round(100*(k+1)/NUM_ANGLES, 1))+ "% complete", end='\r')
 	
