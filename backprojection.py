@@ -20,7 +20,7 @@ from numpy import matrix
 
 # create shepp logan phantom image
 
-image = checkerboard()
+image = shepp_logan_phantom()
 image = rescale(image, scale=1, mode='reflect')
 
 # create radon transform
