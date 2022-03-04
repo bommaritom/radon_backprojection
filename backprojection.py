@@ -11,6 +11,7 @@ from mpl_toolkits import mplot3d
 import skimage as sk
 from skimage.data import shepp_logan_phantom
 from skimage.data import checkerboard
+from skimage.data import camera
 from skimage.transform import radon, rescale
 from numpy import matrix
 
@@ -19,12 +20,12 @@ from numpy import matrix
 
 # create shepp logan phantom image
 
-image = shepp_logan_phantom()
-image = rescale(image, scale=.4, mode='reflect')
+image = checkerboard()
+image = rescale(image, scale=1, mode='reflect')
 
 # create radon transform
 
-NUM_ANGLES = 100
+NUM_ANGLES = 200
 angles = np.linspace(0., 180., NUM_ANGLES, endpoint=False)
 sinogram = radon(image, theta=angles)
 
@@ -52,12 +53,12 @@ S = np.fft.fft(P)
 
 # filter the slices
 
-S_filtered = np.copy(S)
-S_filtered[:,0] = S[:,0] * 0/N
-S_filtered[:,N//2] = S[:,N//2] * 1/2 # == (N//2)/N
-for m in range(1, N//2):
-	S_filtered[:,m] = S[:,m] * m/N
-	S_filtered[:,N-m] = S[:,N-m] * m/N
+# filter based on https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4341983/
+
+ramp = .5*(np.sinc(np.linspace(-N//2,N//2,N))) - .25*np.square(np.sinc(np.linspace(-N//2, N//2, N)/2))
+filter = np.fft.fft(np.fft.fftshift(ramp))
+
+S_filtered = S * filter
 
 # inverse fourier transform of each slice
 
@@ -67,12 +68,15 @@ Q = np.fft.ifft(S_filtered)
 
 f = np.zeros((N,N))
 
+# the following code is not very good
+
 for k in range(len(Q)):
 	theta = k/NUM_ANGLES * np.pi
 	for i in range(N):
 		for j in range(N):
-			val = (j-(N/2))*np.cos(theta)+(i-(N/2))*np.sin(theta) + N/2 + 1/2
+			val = (j-(N/2))*np.cos(theta)+(i-(N/2))*np.sin(theta) + N/2
 			if (val >= 0 and val < len(Q[k])):
+				# interpolation
 				floor = np.minimum(int(np.floor(val)), len(Q[k])-1)
 				ceil = np.minimum(int(np.ceil(val)), len(Q[k])-1)
 				f[N-1-i][j] += Q[k][floor] + (val-floor)*(Q[k][ceil]-Q[k][floor])
@@ -81,30 +85,9 @@ for k in range(len(Q)):
 	
 f *= np.pi/NUM_ANGLES
 
+
+
 # display everything
-
-#fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(8, 4.5))
-#
-#ax1.set_title("Original")
-#ax1.imshow(image, cmap=plt.cm.Greys_r)
-#
-#dx, dy = 0.5 * 180.0 / max(image.shape), 0.5 / sinogram.shape[0]
-#
-#ax2.set_title("Radon transform\n(Sinogram)")
-#ax2.set_xlabel("Projection angle (deg)")
-#ax2.set_ylabel("Projection position (pixels)")
-#ax2.imshow(sinogram, cmap=plt.cm.Greys_r,
-#           extent=(-dx, 180.0 + dx, -dy, sinogram.shape[0] + dy),
-#           aspect='auto')
-#
-#ax3.set_title("Reconstructed from " + str(NUM_ANGLES) + " angles.")
-#ax3.imshow(f, cmap=plt.cm.Greys_r)
-#
-#fig.tight_layout()
-#
-#plt.show()
-#
-
 
 error = f - image
 print(f'FBP normalized rms reconstruction error: {np.sqrt(np.mean(error**2))/np.sqrt(np.mean(image**2)):.3g}')
