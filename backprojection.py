@@ -17,15 +17,21 @@ from numpy import matrix
 
 
 
-
 # create shepp logan phantom image
 
 image = shepp_logan_phantom()
-image = rescale(image, scale=1, mode='reflect')
+l_x, l_y = image.shape[0], image.shape[1]
+X, Y = np.ogrid[:l_x, :l_y]
+outer_disk_mask = (X - l_x / 2)**2 + (Y - l_y / 2)**2 > (l_x / 2)**2 - 1
+image[outer_disk_mask] = 0
+
+
+image = rescale(image, scale=.4, mode='reflect')
+
 
 # create radon transform
 
-NUM_ANGLES = 200
+NUM_ANGLES = 1000
 angles = np.linspace(0., 180., NUM_ANGLES, endpoint=False)
 sinogram = radon(image, theta=angles)
 
@@ -68,23 +74,22 @@ Q = np.fft.ifft(S_filtered)
 
 f = np.zeros((N,N))
 
-# the following code is not very good
-
 for k in range(len(Q)):
 	theta = k/NUM_ANGLES * np.pi
-	for i in range(N):
-		for j in range(N):
-			val = (j-(N/2))*np.cos(theta)+(i-(N/2))*np.sin(theta) + N/2
-			if (val >= 0 and val < len(Q[k])):
-				# interpolation
-				floor = np.minimum(int(np.floor(val)), len(Q[k])-1)
-				ceil = np.minimum(int(np.ceil(val)), len(Q[k])-1)
-				f[N-1-i][j] += Q[k][floor] + (val-floor)*(Q[k][ceil]-Q[k][floor])
-	
-	print("  " + str(np.round(100*(k+1)/NUM_ANGLES, 1))+ "% complete", end='\r')
-	
-f *= np.pi/NUM_ANGLES
 
+	p1 = np.arange(N)[::-1,None]
+	p2 = np.arange(N)[None,:]
+
+	vals = (p2 - (N/2))*np.cos(theta) + (p1 - N/2)*np.sin(theta) + N/2
+	floors = np.minimum(np.floor(vals).astype(int), len(Q[k])-1)
+	ceils = np.minimum(np.ceil(vals).astype(int), len(Q[k])-1)
+	
+	f += np.where(np.logical_and(vals >= 0, vals < len(Q[k])), np.take(Q[k],floors).real + (vals-floors)*(np.take(Q[k],ceils)-np.take(Q[k],floors)).real, np.zeros(np.shape(f)))
+
+	print("  " + str(np.round(100*(k+1)/NUM_ANGLES, 1))+ "% complete", end='\r')
+
+
+f *= np.pi/NUM_ANGLES
 
 
 # display everything
