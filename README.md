@@ -1,2 +1,2 @@
 # radon_backprojection
-Trying to implement Radon backprojection algorithm.
+Radon backprojection algorithm as in A. C. Kak and Malcolm Slaney, Principles of Computerized Tomographic Imaging, IEEE Press, 1988.
