@@ -25,11 +25,11 @@ image[outer_disk_mask] = 0
 
 # rescale image
 
-image = rescale(image, scale=.4, mode='reflect')
+image = rescale(image, scale=1, mode='reflect')
 
 # create radon transform
 
-NUM_ANGLES = 100
+NUM_ANGLES = 200
 angles = np.linspace(0., 180., NUM_ANGLES, endpoint=False)
 sinogram = radon(image, theta=angles)
 
@@ -51,21 +51,23 @@ N = np.shape(sinogram)[0]
 
 P = np.transpose(sinogram)
 
+P_pad = np.pad(P, ((0,0),(N//2,N//2)), 'constant')
+
 # begin backprojection algorithm
 
-S = np.fft.fft(P)
+S = np.fft.fft(P_pad)
 
 # filter based on https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4341983/
 
-x_vals = np.linspace(-N//2,N//2,N)
+x_vals = np.linspace(-N,N,2*N)
 ramp = .5 * (np.sinc(x_vals)) - .25 * np.square(np.sinc(x_vals/2))
 RAMP = np.fft.fft(np.fft.fftshift(ramp))
 
-S_filtered = S * RAMP
+S_filtered = S*RAMP
 
 # inverse fourier transform of each slice
 
-Q = np.fft.ifft(S_filtered)
+Q = np.fft.ifft(S_filtered)[:,N//2:3*N//2]
 
 # backproject each slice
 
